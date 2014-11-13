@@ -166,7 +166,7 @@ do
 	dest=$(git config --get "deploy.${branch}.uri")
 	if [ -z "${dest}" ]
 	then
-		echo "Error: Destination not set! Deploy failed."
+		echo "Destination not set for branch ${branch}."
 		continue
 	fi
 	echo "Destination: "${dest}
@@ -175,7 +175,7 @@ do
 	opts=$(git config --get "deploy.${branch}.opts")
 	if [ -z "${opts}" ]
 	then
-		opts="-rt --delete"
+		opts="-r --delete"
 	fi
 	echo "Options: "${opts}
 	
@@ -214,6 +214,20 @@ do
 		echo "Error: rsync exited with exit code ${status}. Deploy may not have been successful. Please review the error log above."
 	else
 		echo "Deploy successful!"
+
+		## Execute additionnal commands
+
+		ssh_login=${dest%:*}
+		ssh_path=${dest##*:}
+
+		SAVEIFS=$IFS
+		IFS=$(echo -en "\n\b")
+		for command in `git config --get-all deploy.test-autodeploy.postcommand`; do
+			ssh ${ssh_login} "cd ${ssh_path} && $command"
+			
+		done;
+		IFS=$SAVEIFS
+
 	fi
 	echo ""
 done
@@ -229,3 +243,4 @@ rm ${scratch} -rf
 # Unset environment variables
 unset GIT RSYNC TMP GIT_DIR scratch old new ref branch dest optstimestamps file
 unset last
+
